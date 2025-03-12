@@ -34,7 +34,7 @@ with torch.autocast("cuda", torch.bfloat16):
                 start_frame = int(f.read())
         else:
             start_frame = random.randint(0, len(flist)-41)
-            with open(pathlib.Path(OUT_FOLDER) / f"{vid_folder.name}.STARTFRAME") as f:
+            with open(pathlib.Path(OUT_FOLDER) / f"{vid_folder.name}.STARTFRAME", "w") as f:
                 f.write(str(start_frame))
         flist = flist[start_frame:]
 
