@@ -43,8 +43,9 @@ with torch.autocast("cuda", torch.bfloat16):
             image = image
             image = resizer(image)
             images.append(image)
-        images.to(torch.bfloat16)
+        
         images = torch.stack(images, dim=0).permute(1, 0, 2, 3).unsqueeze(0)
+        images.to(torch.bfloat16)
         latent = vae_encode(images, vae, vae_per_channel_normalize=True)
         torch.save(latent, pathlib.Path(OUT_LATENT_FOLDER) / f"{vid_folder.name}.pt")
         print(vid_folder.name, "done successfully.")
