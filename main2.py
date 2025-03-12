@@ -72,24 +72,24 @@ class PairedVideoDataset(Dataset):
         # target_path = self.target_files[idx]
         # input_video = self.load_video(input_path)   # shape: (3, F, H, W)  # F should be 8n+1
         # target_video = self.load_video(target_path)   # same shape
-        input_video = torch.rand(3, 9, 720, 1280)
-        target_video = torch.rand(3, 9, 720, 1280)
-        
-        # Add batch dimension for VAE encoding: (1, C, F, H, W)
-        input_video = input_video.unsqueeze(0)
-        target_video = target_video.unsqueeze(0)
-        
-        # Encode videos into latents using the VAE.
-        # The vae_encode function returns a tensor of shape (B, latent_channels, F_latent, H_latent, W_latent)
-        input_latents = vae_encode(input_video.to(self.vae.device), self.vae, vae_per_channel_normalize=True)
-        target_latents = vae_encode(target_video.to(self.vae.device), self.vae, vae_per_channel_normalize=True)
-        
-        # Remove the batch dimension.
-        input_latents = input_latents.squeeze(0)
-        target_latents = target_latents.squeeze(0)
-
-        
-        return input_latents, target_latents
+        with torch.autocast("cuda", torch.bfloat16), torch.no_grad():
+            input_video = torch.rand(3, 41, 864, 1536)
+            target_video = torch.rand(3, 41, 864, 1536)
+            
+            # Add batch dimension for VAE encoding: (1, C, F, H, W)
+            input_video = input_video.unsqueeze(0)
+            target_video = target_video.unsqueeze(0)
+            
+            # Encode videos into latents using the VAE.
+            # The vae_encode function returns a tensor of shape (B, latent_channels, F_latent, H_latent, W_latent)
+            input_latents = vae_encode(input_video.to(self.vae.device), self.vae, vae_per_channel_normalize=True)
+            target_latents = vae_encode(target_video.to(self.vae.device), self.vae, vae_per_channel_normalize=True)
+            
+            # Remove the batch dimension.
+            input_latents = input_latents.squeeze(0)
+            target_latents = target_latents.squeeze(0)    
+            
+            return input_latents, target_latents
 
 # -----------------------------------------------------------------------------
 # Training Script
@@ -101,9 +101,9 @@ def main():
 
     # Video processing hyperparameters.
     # (These should match the resolution your VAE expects.)
-    target_height = 720   # original height
-    target_width = 1280   # original width
-    num_frames = 9      # or set to a lower number to sample a subset
+    target_height = 864   # original height
+    target_width = 1536   # original width
+    num_frames = 41      # or set to a lower number to sample a subset
     sample_rate = 1       # use every frame
 
     # Training hyperparameters.
@@ -117,7 +117,7 @@ def main():
     # Adjust ckpt_path to point to your pretrained checkpoint directory.
     ckpt_path = "models/ltx-video-2b-v0.9.5.safetensors"
     vae = CausalVideoAutoencoder.from_pretrained(ckpt_path)
-    vae.to(device)
+    vae.to(device, dtype=torch.bfloat16)
 
     # Create the paired video dataset.
     dataset = PairedVideoDataset(
@@ -136,8 +136,9 @@ def main():
     # latent_height = target_height // 8, latent_width = target_width // 8.
     latent_height = target_height // 8
     latent_width = target_width // 8
+    latent_frames = (num_frames + 7) // 8
     # Assume the VAE produces 4 latent channels.
-    latent_channels = 4
+    latent_channels = 128
 
     # Initialize the Transformer3DModel.
     # Make sure to set in_channels to match the latent channels.
