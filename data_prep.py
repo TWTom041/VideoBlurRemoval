@@ -40,6 +40,7 @@ with torch.autocast("cuda", torch.bfloat16):
 
         for frame_img in flist:
             image = torchvision.io.decode_image(frame_img, mode="RGB")
+            image = image.unsqueeze(0)
             image = resizer(image)
             images.append(image)
         images = torch.stack(images, axis=0)
