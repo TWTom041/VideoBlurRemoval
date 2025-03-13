@@ -57,7 +57,7 @@ with torch.autocast("cuda", torch.bfloat16), torch.no_grad():
         images = torch.stack(images, dim=0).permute(1, 0, 2, 3).unsqueeze(0).bfloat16().cuda()
         print(images.shape)
         latent = vae_encode(images, vae, vae_per_channel_normalize=False)
-        out_images = vae_decode(latent, vae, vae_per_channel_normalize=False)
+        out_images = vae_decode(latent, vae, vae_per_channel_normalize=False, timestep=0)
         out_images = out_images.permute(0, 2, 3, 4, 1).squeeze(0)
         write_video(out_images, fps=24, video_codec="h264")
         break
