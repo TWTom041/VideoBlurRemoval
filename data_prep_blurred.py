@@ -69,6 +69,9 @@ for vid in os.listdir(DATADIR):
     if os.path.exists(os.path.join(OUT_DIR, f"{vid}.STARTFRAME")):
         with open(os.path.join(OUT_DIR, f"{vid}.STARTFRAME")) as f:
             start_frame = int(f.read())
+    else:
+        print("STARTFRAME not found, skipping")
+        continue
 
     for key in sorted(origin.keys())[start_frame:start_frame+41]:
         num = key.split(".")[0]
