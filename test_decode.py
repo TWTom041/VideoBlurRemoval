@@ -1,3 +1,11 @@
+import os
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:512"
+
+import torch
+from ltx_video.models.autoencoders.causal_video_autoencoder import CausalVideoAutoencoder
+from ltx_video.models.autoencoders.vae_encode import vae_decode
+from torchvision.io import write_video
+
 import torch
 import torchvision
 from torchvision import transforms
@@ -8,7 +16,6 @@ import random
 from ltx_video.models.autoencoders.causal_video_autoencoder import CausalVideoAutoencoder
 from ltx_video.models.autoencoders.vae_encode import vae_encode
 
-os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:512"
 # os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 ckpt_path = "models/ltx-video-2b-v0.9.5.safetensors"
@@ -50,5 +57,7 @@ with torch.autocast("cuda", torch.bfloat16), torch.no_grad():
         images = torch.stack(images, dim=0).permute(1, 0, 2, 3).unsqueeze(0).bfloat16().cuda()
         print(images.shape)
         latent = vae_encode(images, vae, vae_per_channel_normalize=False)
-        torch.save(latent, pathlib.Path(OUT_LATENT_FOLDER) / f"{vid_folder.name}.pt")
-        print(vid_folder.name, "done successfully.")
+        out_images = vae_decode(latent, vae, vae_per_channel_normalize=False)
+        out_images = out_images.permute(0, 2, 3, 4, 1).squeeze(0)
+        write_video(out_images, fps=24, video_codec="h264")
+        break
