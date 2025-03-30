@@ -122,6 +122,9 @@ def main():
                 # Sample a random timestep (for diffusion conditioning).
                 t = torch.randint(0, scheduler.num_timesteps, (batch_size, 1), device=device, dtype=torch.bfloat16)
                 t = t / scheduler.num_timesteps
+
+                noisy_input_patches = scheduler.add_noise(input_patches, noise_target_patches, t)
+                v_target = noisy_input_patches - input_patches
                 
                 # Forward pass: predict noise conditioned on the input video.
                 predicted_noise = transformer(
@@ -135,7 +138,7 @@ def main():
                     return_dict=False,
                 )[0]
 
-                loss = mse_loss(predicted_noise, noise_target_patches)
+                loss = mse_loss(predicted_noise, v_target)
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
