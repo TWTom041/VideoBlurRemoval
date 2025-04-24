@@ -62,6 +62,7 @@ with torch.autocast("cuda", torch.bfloat16), torch.no_grad():
         images = images.permute(0, 2, 3, 4, 1).squeeze(0)
         out_images = out_images.permute(0, 2, 3, 4, 1).squeeze(0)
 
+        images = (images + 1.0) * 127.5
         out_images = (out_images + 1.0) * 127.5
         images = torch.clamp(images, 0, 255)
         out_images = torch.clamp(images, 0, 255)
