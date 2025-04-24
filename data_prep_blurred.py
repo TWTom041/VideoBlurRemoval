@@ -12,7 +12,7 @@ from ltx_video.models.autoencoders.vae_encode import vae_encode
 # Set device to GPU if available
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-ckpt_path = "/home/twtomtwcc00/VideoBlurRemoval/models/ltx-video-2b-v0.9.5.safetensors"
+ckpt_path = "/home/twtomtwcc00/VideoBlurRemoval/models/ltxv-2b-0.9.6-dev-04-25.safetensors"
 vae = CausalVideoAutoencoder.from_pretrained(ckpt_path)
 vae.to(device, dtype=torch.bfloat16)
 resizer = T.Resize([864, 1536])
