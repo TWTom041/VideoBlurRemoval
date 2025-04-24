@@ -18,7 +18,7 @@ from ltx_video.models.autoencoders.vae_encode import vae_encode
 
 # os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
-ckpt_path = "models/ltx-video-2b-v0.9.5.safetensors"
+ckpt_path = "models/ltxv-2b-0.9.6-dev-04-25.safetensors"
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 IN_FOLDER = "/home/twtomtwcc00/VSPW"
 OUT_FOLDER = "VSPW_latent"
