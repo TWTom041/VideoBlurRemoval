@@ -106,7 +106,7 @@ def main():
     mse_loss = nn.MSELoss()
 
     transformer.train()
-    with torch.autocast(device, torch.bfloat16):
+    with torch.autocast("cuda", torch.bfloat16):
         for epoch in range(num_epochs):
             for step, (input_latents, target_latents) in enumerate(dataloader):
                 input_latents = input_latents.to(device)   # (B, latent_channels, F_latent, H_latent, W_latent)
