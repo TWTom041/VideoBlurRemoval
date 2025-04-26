@@ -38,7 +38,7 @@ class PairedVideoDataset(Dataset):
         self.input_data = [self.process_pt_file(f) for f in self.input_files]
         self.target_data = [self.process_pt_file(f) for f in self.target_files]
 
-    def process_pt_file(filename):
+    def process_pt_file(self, filename):
         tensor = torch.load(filename, map_location=torch.device("cpu"))
         if len(tensor.shape) == 4:
             return tensor
