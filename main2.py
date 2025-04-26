@@ -59,8 +59,8 @@ class PairedVideoDataset(Dataset):
 # -----------------------------------------------------------------------------
 def main():
     # Paths to the folders with input and target videos.
-    input_vids_dir = "input_vids"
-    target_vids_dir = "target_vids"
+    input_vids_dir = "/home/twtomtwcc00/VideoBlurRemoval/VSPW_latent/blurred/"
+    target_vids_dir = "/home/twtomtwcc00/VideoBlurRemoval/VSPW_latent/origin/"
 
     # Video processing hyperparameters.
     target_height = 864   # original video height
