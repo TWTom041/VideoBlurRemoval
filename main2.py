@@ -71,6 +71,7 @@ def main():
     batch_size = 1        # adjust based on available GPU memory
     num_epochs = 1000
     learning_rate = 1e-4
+    num_timesteps = 1000
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -119,8 +120,8 @@ def main():
                 input_patches, indices_grid = patchifier.patchify(input_latents)
 
                 # Sample a random timestep (for diffusion conditioning).
-                t = torch.randint(0, scheduler.num_timesteps, (batch_size, 1), device=device, dtype=torch.bfloat16)
-                t = t / scheduler.num_timesteps
+                t = torch.randint(0, num_timesteps, (batch_size, 1), device=device, dtype=torch.bfloat16)
+                t = t / num_timesteps
 
                 noisy_input_patches = scheduler.add_noise(input_patches, noise_target_patches, t)
                 v_target = noisy_input_patches - input_patches
