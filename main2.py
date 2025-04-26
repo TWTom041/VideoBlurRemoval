@@ -100,7 +100,6 @@ def main():
     patchifier = SymmetricPatchifier(patch_size=1)
 
     scheduler = RectifiedFlowScheduler.from_pretrained(ckpt_path)
-    scheduler.to(device)
 
     optimizer = optim.Adam(transformer.parameters(), lr=learning_rate)
     mse_loss = nn.MSELoss()
