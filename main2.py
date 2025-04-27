@@ -359,7 +359,7 @@ def main():
 
                     val_losses.append(mse_loss(predicted_noise, v_target).item())
             avg_val_loss = sum(val_losses) / len(val_losses)
-            avg_train_loss = sum(train_losses / len(train_losses))
+            avg_train_loss = sum(train_losses) / len(train_losses)
             epoch_logs = {"epoch_val_loss": avg_val_loss, "epoch_train_loss": avg_train_loss}
             for cb in callbacks:
                 cb.on_epoch_end(epoch, epoch_logs)
