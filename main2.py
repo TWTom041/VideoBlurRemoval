@@ -286,7 +286,7 @@ def main():
                 input_patches, indices_grid = patchifier.patchify(input_latents)
 
                 # Sample a random timestep (for diffusion conditioning).
-                t = torch.randint(0, num_timesteps, (batch_size, 1), device=device, dtype=torch.bfloat16)
+                t = torch.randint(0, num_timesteps, (input_latents.shape[0], 1), device=device, dtype=torch.bfloat16)
                 t = t / num_timesteps
 
                 noisy_input_patches = scheduler.add_noise(input_patches, noise_target_patches, t)
@@ -339,7 +339,7 @@ def main():
                     input_patches, indices_grid = patchifier.patchify(input_latents)
 
                     # Sample a random timestep (for diffusion conditioning).
-                    t = torch.randint(0, num_timesteps, (batch_size, 1), device=device, dtype=torch.bfloat16)
+                    t = torch.randint(0, num_timesteps, (input_latents.shape[0], 1), device=device, dtype=torch.bfloat16)
                     t = t / num_timesteps
 
                     noisy_input_patches = scheduler.add_noise(input_patches, noise_target_patches, t)
