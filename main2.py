@@ -4,6 +4,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 from torch.utils.tensorboard import SummaryWriter
+from tensorboard.backend.event_processing import event_accumulator
 import numpy as np
 import imageio
 from pathlib import Path, PurePath
@@ -17,6 +18,7 @@ from ltx_video.models.transformers.transformer3d import Transformer3DModel
 from ltx_video.models.transformers.symmetric_patchifier import SymmetricPatchifier
 from ltx_video.schedulers.rf import RectifiedFlowScheduler
 from ltx_video.pipelines.pipeline_ltx_video import retrieve_timesteps
+
 
 # -----------------------------------------------------------------------------
 # Paired Video Dataset
@@ -123,6 +125,7 @@ class ModelCheckpoint(Callback):
         monitor="epoch_val_loss",
         mode="min",
         verbose=True,
+        log_dir="runs/exp"
     ):
         """
         Args:
@@ -144,12 +147,22 @@ class ModelCheckpoint(Callback):
         self.verbose = verbose
 
         # Initialize comparison operator
+
+        
         if mode == "min":
             self._is_improvement = lambda current, best: current < best
-            self.best_score = float("inf")
+            if len(os.listdir(log_dir))>0:
+                ea = event_accumulator.EventAccumulator(log_dir)
+                self.best_score = min( evl.value for evl in ea.Reload().Scalars("val/epoch_loss"))
+            else:
+                self.best_score = float("inf")
         elif mode == "max":
             self._is_improvement = lambda current, best: current > best
-            self.best_score = -float("inf")
+            if len(os.listdir(log_dir))>0:
+                ea = event_accumulator.EventAccumulator(log_dir)
+                self.best_score = max( evl.value for evl in ea.Reload().Scalars("val/epoch_loss"))
+            else:
+                self.best_score = -float("inf")
         else:
             raise ValueError("mode must be 'min' or 'max'")
 
@@ -240,11 +253,15 @@ def main():
     latent_frames = (num_frames + 7) // 8
     latent_channels = 128
 
-    transformer = Transformer3DModel(
-        in_channels=latent_channels,
-        positional_embedding_theta=10000,
-        positional_embedding_max_pos=[latent_height, latent_width, num_frames // 8],  # adjust if needed
-    )
+
+    if Path("checkpoints/vbrt_best.pt").exists():
+        transformer = Transformer3DModel.from_pretrained("checkpoints/vbrt_best.pt")
+    else:
+        transformer = Transformer3DModel(
+            in_channels=latent_channels,
+            positional_embedding_theta=10000,
+            positional_embedding_max_pos=[latent_height, latent_width, num_frames // 8],  # adjust if needed
+        )
     transformer.to(device)
 
     patchifier = SymmetricPatchifier(patch_size=1)
@@ -264,7 +281,8 @@ def main():
             last_fname="vbrt_last.pt",
             monitor="epoch_val_loss",
             mode="min",
-            verbose=True
+            verbose=True,
+            log_dir="runs/vid_blur_removal"
         )
     ]
 
