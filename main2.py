@@ -5,6 +5,7 @@ import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from tensorboard.backend.event_processing import event_accumulator
+from safetensors.torch import save_file
 import numpy as np
 import imageio
 from pathlib import Path, PurePath
@@ -78,21 +79,18 @@ class EarlyStopping(Callback):
         self.verbose = verbose
         self.best_loss = np.inf
         self.wait = 0
-        self.stopped_epoch = None
         self.stop_training = False
 
     def on_epoch_end(self, epoch, logs=None):
-        current_loss = logs.get("val_loss")
+        current_loss = logs.get("val_loss") or logs.get("epoch_val_loss")
         if current_loss is None:
             return
-
         if current_loss + self.min_delta < self.best_loss:
             self.best_loss = current_loss
             self.wait = 0
         else:
             self.wait += 1
             if self.wait >= self.patience:
-                self.stopped_epoch = epoch
                 self.stop_training = True
                 if self.verbose:
                     print(f"EarlyStopping triggered at epoch {epoch+1}")
@@ -101,16 +99,14 @@ class EarlyStopping(Callback):
 class TensorBoardLogger(Callback):
     def __init__(self, log_dir="runs/exp"):
         self.writer = SummaryWriter(log_dir)
-
     def on_step_end(self, epoch, step, logs=None):
         if logs is None: return
-        self.writer.add_scalar("train/step_loss", logs["step_train_loss"], epoch * logs["steps_per_epoch"] + step)
-
+        self.writer.add_scalar("train/step_loss", logs["step_train_loss"],
+                               epoch * logs.get("steps_per_epoch", 0) + step)
     def on_epoch_end(self, epoch, logs=None):
         if logs is None: return
         self.writer.add_scalar("val/epoch_loss", logs["epoch_val_loss"], epoch)
         self.writer.add_scalar("train/epoch_loss", logs["epoch_train_loss"], epoch)
-
     def on_train_end(self, logs=None):
         self.writer.close()
 
@@ -119,25 +115,19 @@ class ModelCheckpoint(Callback):
     def __init__(
         self,
         model,
+        optimizer,
+        scaler,
         save_dir="checkpoints",
-        best_fname="best_model.pt",
-        last_fname="last_model.pt",
+        best_fname="best_model.safetensors",
+        last_fname="last_model.safetensors",
         monitor="epoch_val_loss",
         mode="min",
         verbose=True,
         log_dir="runs/exp"
     ):
-        """
-        Args:
-            model:               your nn.Module to save
-            save_dir:            folder to write checkpoints to
-            best_fname:          filename for best model
-            last_fname:          filename for last model
-            monitor:             which metric to monitor (e.g. "val_loss")
-            mode:                "min" or "max" — how to compare metrics
-            verbose:             whether to print saving messages
-        """
         self.model = model
+        self.optimizer = optimizer
+        self.scaler = scaler
         self.save_dir = save_dir
         os.makedirs(save_dir, exist_ok=True)
         self.best_path = os.path.join(save_dir, best_fname)
@@ -146,61 +136,57 @@ class ModelCheckpoint(Callback):
         self.mode = mode
         self.verbose = verbose
 
-        # Initialize comparison operator
-
-        
+        # Comparison operator
         if mode == "min":
-            self._is_improvement = lambda current, best: current < best
-            if len(os.listdir(log_dir))>0:
-                ea = event_accumulator.EventAccumulator(log_dir)
-                self.best_score = min( evl.value for evl in ea.Reload().Scalars("val/epoch_loss"))
-            else:
-                self.best_score = float("inf")
+            self._is_improvement = lambda curr, best: curr < best
+            self.best_score = self._load_initial_best(log_dir, minimize=True)
         elif mode == "max":
-            self._is_improvement = lambda current, best: current > best
-            if len(os.listdir(log_dir))>0:
-                ea = event_accumulator.EventAccumulator(log_dir)
-                self.best_score = max( evl.value for evl in ea.Reload().Scalars("val/epoch_loss"))
-            else:
-                self.best_score = -float("inf")
+            self._is_improvement = lambda curr, best: curr > best
+            self.best_score = self._load_initial_best(log_dir, minimize=False)
         else:
             raise ValueError("mode must be 'min' or 'max'")
 
+    def _load_initial_best(self, log_dir, minimize=True):
+        if os.path.isdir(log_dir) and os.listdir(log_dir):
+            ea = event_accumulator.EventAccumulator(log_dir)
+            ea.Reload()
+            vals = [e.value for e in ea.Scalars("val/epoch_loss")]
+            return min(vals) if minimize else max(vals)
+        return float("inf") if minimize else -float("inf")
+
     def on_epoch_end(self, epoch, logs=None):
         logs = logs or {}
-        # 1) Save “last model” every epoch
-        torch.save(
-            self.model.state_dict(),
-            self.last_path
-        )
+        # Save last model + optimizer + scaler
+        self._save_checkpoint(self.last_path, epoch)
         if self.verbose:
-            print(f"[Epoch {epoch+1}] Saved last model → {self.last_path}")
-
-        # 2) Check for improvement and save “best model”
+            print(f"[Epoch {epoch+1}] Saved last checkpoint → {self.last_path}")
+        # Save best if improved
         current = logs.get(self.monitor)
         if current is None:
             return
-
         if self._is_improvement(current, self.best_score):
-            old_best = self.best_score
+            old = self.best_score
             self.best_score = current
-            torch.save(
-                self.model.state_dict(),
-                self.best_path
-            )
+            self._save_checkpoint(self.best_path, epoch)
             if self.verbose:
-                print(f"[Epoch {epoch+1}] {self.monitor} improved "
-                      f"{old_best:.4f} → {current:.4f}. "
-                      f"Saved best model → {self.best_path}")
+                print(f"[Epoch {epoch+1}] {self.monitor} improved {old:.4f} → {current:.4f}. "
+                      f"Saved best checkpoint → {self.best_path}")
 
     def on_train_end(self, logs=None):
-        # just to be safe: ensure last model is up-to-date
-        torch.save(
-            self.model.state_dict(),
-            self.last_path
-        )
+        # final save
+        self._save_checkpoint(self.last_path, None)
         if self.verbose:
-            print(f"Training ended. Final model saved → {self.last_path}")
+            print(f"Training ended. Final checkpoint saved → {self.last_path}")
+
+    def _save_checkpoint(self, path, epoch):
+        data = {
+            "model": self.model.state_dict(),
+            "optimizer": self.optimizer.state_dict(),
+            "scaler": self.scaler.state_dict()
+        }
+        if epoch is not None:
+            data["epoch"] = epoch + 1
+        save_file(data, path)
 
 
 def split_dataset(input_video_dir, target_video_dir, train_split_ratio=0.8):
