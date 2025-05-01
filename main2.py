@@ -253,9 +253,9 @@ def main():
     latent_frames = (num_frames + 7) // 8
     latent_channels = 128
 
-
+  
     if Path("checkpoints/vbrt_best.pt").exists():
-        transformer = Transformer3DModel.from_pretrained("checkpoints/vbrt_best.pt")
+        transformer = Transformer3DModel.load_state_dict(torch.load("checkpoints/vbrt_best.pt"), assign=True)
     else:
         transformer = Transformer3DModel(
             in_channels=latent_channels,
