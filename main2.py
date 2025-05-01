@@ -255,7 +255,7 @@ def main():
 
   
     if Path("checkpoints/vbrt_best.pt").exists():
-        transformer = Transformer3DModel.load_state_dict(torch.load("checkpoints/vbrt_best.pt"), assign=True)
+        transformer = Transformer3DModel.load_state_dict(torch.load("checkpoints/vbrt_best.pt"))
     else:
         transformer = Transformer3DModel(
             in_channels=latent_channels,
