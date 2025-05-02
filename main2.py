@@ -151,7 +151,7 @@ class ModelCheckpoint(Callback):
         if os.path.isdir(log_dir) and os.listdir(log_dir):
             ea = event_accumulator.EventAccumulator(log_dir)
             ea.Reload()
-            if "val/epoch_loss" in ea.scalers.keys():
+            if "val/epoch_loss" in ea.scalars.keys():
                 vals = [e.value for e in ea.Scalars("val/epoch_loss")]
                 return min(vals) if minimize else max(vals)
         return float("inf") if minimize else -float("inf")
