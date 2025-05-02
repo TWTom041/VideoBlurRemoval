@@ -99,9 +99,6 @@ class EarlyStopping(Callback):
 class TensorBoardLogger(Callback):
     def __init__(self, log_dir="runs/exp"):
         self.writer = SummaryWriter(log_dir)
-        self.writer.add_scalar("train/step_loss", float('nan'), float('nan'))
-        self.writer.add_scalar("val/epoch_loss", float('nan'), float('nan'))
-        self.writer.add_scalar("train/epoch_loss", float('nan'), float('nan'))
 
     def on_step_end(self, epoch, step, logs=None):
         if logs is None: return
@@ -154,8 +151,9 @@ class ModelCheckpoint(Callback):
         if os.path.isdir(log_dir) and os.listdir(log_dir):
             ea = event_accumulator.EventAccumulator(log_dir)
             ea.Reload()
-            vals = [e.value for e in ea.Scalars("val/epoch_loss")]
-            return min(vals) if minimize else max(vals)
+            if "val/epoch_loss" in ea.scalers.keys():
+                vals = [e.value for e in ea.Scalars("val/epoch_loss")]
+                return min(vals) if minimize else max(vals)
         return float("inf") if minimize else -float("inf")
 
     def on_epoch_end(self, epoch, logs=None):
