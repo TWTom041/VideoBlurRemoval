@@ -5,6 +5,7 @@ import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from tensorboard.backend.event_processing import event_accumulator
+from diffusers.configuration_utils import FrozenDict
 import numpy as np
 import imageio
 from pathlib import Path, PurePath
@@ -18,6 +19,8 @@ from ltx_video.models.transformers.transformer3d import Transformer3DModel
 from ltx_video.models.transformers.symmetric_patchifier import SymmetricPatchifier
 from ltx_video.schedulers.rf import RectifiedFlowScheduler
 from ltx_video.pipelines.pipeline_ltx_video import retrieve_timesteps
+
+torch.serialization.add_safe_globals([FrozenDict])
 
 
 # -----------------------------------------------------------------------------
