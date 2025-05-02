@@ -99,6 +99,10 @@ class EarlyStopping(Callback):
 class TensorBoardLogger(Callback):
     def __init__(self, log_dir="runs/exp"):
         self.writer = SummaryWriter(log_dir)
+        self.writer.add_scalar("train/step_loss", float('nan'), float('nan'))
+        self.writer.add_scalar("val/epoch_loss", float('nan'), float('nan'))
+        self.writer.add_scalar("train/epoch_loss", float('nan'), float('nan'))
+
     def on_step_end(self, epoch, step, logs=None):
         if logs is None: return
         self.writer.add_scalar("train/step_loss", logs["step_train_loss"],
