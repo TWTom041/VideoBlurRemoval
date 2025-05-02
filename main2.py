@@ -5,7 +5,6 @@ import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from tensorboard.backend.event_processing import event_accumulator
-from safetensors.torch import save_file
 import numpy as np
 import imageio
 from pathlib import Path, PurePath
@@ -189,7 +188,7 @@ class ModelCheckpoint(Callback):
         }
         if epoch is not None:
             data["epoch"] = epoch + 1
-        save_file(data, path)
+        torch.save(data, path)
 
 
 def split_dataset(input_video_dir, target_video_dir, train_split_ratio=0.8):
@@ -381,7 +380,7 @@ def main():
 
                 val_losses.append(mse_loss(predicted_noise, v_target).item())
                 if step % 10 == 0:
-                    print(f"Epoch [{epoch+1}/{num_epochs}] Step [{step}/{len(train_dataloader)}] Loss: {loss.item():.4f}")
+                    print(f"Epoch [{epoch+1}/{num_epochs}] Step [{step}/{len(test_dataloader)}] Loss: {loss.item():.4f}")
 
         avg_val_loss = sum(val_losses) / len(val_losses)
         avg_train_loss = sum(train_losses) / len(train_losses)
