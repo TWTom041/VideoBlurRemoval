@@ -118,8 +118,8 @@ class ModelCheckpoint(Callback):
         optimizer,
         scaler,
         save_dir="checkpoints",
-        best_fname="best_model.safetensors",
-        last_fname="last_model.safetensors",
+        best_fname="best_model.pt",
+        last_fname="last_model.pt",
         monitor="epoch_val_loss",
         mode="min",
         verbose=True,
@@ -180,9 +180,10 @@ class ModelCheckpoint(Callback):
     
     def _save_checkpoint(self, path, epoch):
         data = {
-            "model": self.model.state_dict(),
+            "transformer": self.model.state_dict(),
             "optimizer": self.optimizer.state_dict(),
-            "scaler": self.scaler.state_dict()
+            "scaler": self.scaler.state_dict(),
+            "config": self.model.config
         }
         if epoch is not None:
             data["epoch"] = epoch + 1
@@ -239,13 +240,16 @@ def main():
     latent_frames = (num_frames + 7) // 8
     latent_channels = 128
 
+    if Path("checkpoints/best_model.pt").exists():
+        state_dicts = torch.load("checkpoints/best_model.pt")
+    else:
+        state_dicts = None
+
     transformer = Transformer3DModel(
             in_channels=latent_channels,
             positional_embedding_theta=10000,
             positional_embedding_max_pos=[latent_height, latent_width, num_frames // 8],  # adjust if needed
         )
-    if Path("checkpoints/best_model.safetensors").exists():
-        transformer.load_state_dict(state_dict=torch.load("checkpoints/best_model.safetensors", weights_only=True))
     transformer.to(device)
 
     patchifier = SymmetricPatchifier(patch_size=1)
@@ -253,19 +257,25 @@ def main():
     scheduler = RectifiedFlowScheduler.from_pretrained(ckpt_path)
 
     optimizer = optim.Adam(transformer.parameters(), lr=learning_rate)
-       #     if Path("checkpoints/last_adam.safetensors").exists():
-        #        optimizer.load_state_dict(state_dict=torch.load("checkpoints/last_adam.safetensors"))
+
+    scaler = torch.GradScaler("cuda")    
+
+    if Path("checkpoints/best_model.pt").exists():
+        state_dicts = torch.load("checkpoints/best_model.pt")
+        transformer.load_state_dict(state_dict=state_dicts["transformer"])
+        optimizer.load_state_dict(state_dict=state_dicts["optimizer"])
+        scaler.load_state_dict(state_dict=state_dicts["scaler"])
    
     mse_loss = nn.MSELoss()
 
     callbacks = [
         TensorBoardLogger(log_dir="runs/vid_blur_removal"),
-        EarlyStopping(patience=5, min_delta=1e-4),
+        EarlyStopping(patience=20, min_delta=1e-4),
         ModelCheckpoint(
             model=transformer,
             save_dir="checkpoints",
-            best_fname="best_model.safetensors",
-            last_fname="last_model.safetensors",
+            best_fname="best_model.pt",
+            last_fname="last_model.pt",
             monitor="epoch_val_loss",
             mode="min",
             verbose=True,
@@ -275,11 +285,12 @@ def main():
 
     global_step = 0
 
-    with torch.autocast("cuda", torch.bfloat16):
-        for epoch in range(num_epochs):
-            transformer.train()
-            train_losses = []
-            for step, (input_latents, target_latents) in enumerate(train_dataloader):
+    
+    for epoch in range(num_epochs):
+        transformer.train()
+        train_losses = []
+        for step, (input_latents, target_latents) in enumerate(train_dataloader):
+            with torch.autocast("cuda", torch.bfloat16):
                 input_latents = input_latents.to(device)   # (B, latent_channels, F_latent, H_latent, W_latent)
                 target_latents = target_latents.to(device)
 
@@ -310,9 +321,11 @@ def main():
                 )[0]
 
                 loss = mse_loss(predicted_noise, v_target)
+
                 optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
+                scaler.scale(loss).backward()
+                scaler.step(optimizer)
+                scaler.update()
 
                 loss_val = loss.item()
                 train_losses.append(loss_val)
@@ -329,50 +342,53 @@ def main():
                 if step % 10 == 0:
                     print(f"Epoch [{epoch+1}/{num_epochs}] Step [{step}/{len(train_dataloader)}] Loss: {loss.item():.4f}")
 
-            transformer.eval()
-            val_losses = []
-            with torch.no_grad():
-                for (input_latents, target_latents) in test_dataloader:
-                    input_latents = input_latents.to(device)   # (B, latent_channels, F_latent, H_latent, W_latent)
-                    target_latents = target_latents.to(device)
+        transformer.eval()
+        val_losses = []
+        with torch.no_grad(), torch.autocast("cuda", torch.bfloat16):
+            for step, (input_latents, target_latents) in enumerate(test_dataloader):
+                input_latents = input_latents.to(device)   # (B, latent_channels, F_latent, H_latent, W_latent)
+                target_latents = target_latents.to(device)
 
-                    noise = target_latents - input_latents
+                noise = target_latents - input_latents
 
-                    # Patchify the noisy target and the noise (prediction target).
-                    noise_target_patches, _ = patchifier.patchify(noise)
-                    # Patchify the input latents to use as conditioning.
-                    input_patches, indices_grid = patchifier.patchify(input_latents)
+                # Patchify the noisy target and the noise (prediction target).
+                noise_target_patches, _ = patchifier.patchify(noise)
+                # Patchify the input latents to use as conditioning.
+                input_patches, indices_grid = patchifier.patchify(input_latents)
 
-                    # Sample a random timestep (for diffusion conditioning).
-                    t = torch.randint(0, num_timesteps, (input_latents.shape[0], 1), device=device, dtype=torch.bfloat16)
-                    t = t / num_timesteps
+                # Sample a random timestep (for diffusion conditioning).
+                t = torch.randint(0, num_timesteps, (input_latents.shape[0], 1), device=device, dtype=torch.bfloat16)
+                t = t / num_timesteps
 
-                    noisy_input_patches = scheduler.add_noise(input_patches, noise_target_patches, t)
-                    v_target = noisy_input_patches - input_patches
-                    
-                    # Forward pass: predict noise conditioned on the input video.
-                    predicted_noise = transformer(
-                        hidden_states=input_patches,
-                        indices_grid=indices_grid,
-                        timestep=t,
-                        attention_mask=None,
-                        encoder_attention_mask=None,
-                        skip_layer_mask=None,
-                        skip_layer_strategy=None,
-                        return_dict=False,
-                    )[0]
+                noisy_input_patches = scheduler.add_noise(input_patches, noise_target_patches, t)
+                v_target = noisy_input_patches - input_patches
+                
+                # Forward pass: predict noise conditioned on the input video.
+                predicted_noise = transformer(
+                    hidden_states=input_patches,
+                    indices_grid=indices_grid,
+                    timestep=t,
+                    attention_mask=None,
+                    encoder_attention_mask=None,
+                    skip_layer_mask=None,
+                    skip_layer_strategy=None,
+                    return_dict=False,
+                )[0]
 
-                    val_losses.append(mse_loss(predicted_noise, v_target).item())
-            avg_val_loss = sum(val_losses) / len(val_losses)
-            avg_train_loss = sum(train_losses) / len(train_losses)
-            epoch_logs = {"epoch_val_loss": avg_val_loss, "epoch_train_loss": avg_train_loss}
-            for cb in callbacks:
-                cb.on_epoch_end(epoch, epoch_logs)
-            # check for early stopping
-            if any(getattr(cb, "stop_training", False) for cb in callbacks):
-                break
+                val_losses.append(mse_loss(predicted_noise, v_target).item())
+                if step % 10 == 0:
+                    print(f"Epoch [{epoch+1}/{num_epochs}] Step [{step}/{len(train_dataloader)}] Loss: {loss.item():.4f}")
+
+        avg_val_loss = sum(val_losses) / len(val_losses)
+        avg_train_loss = sum(train_losses) / len(train_losses)
+        epoch_logs = {"epoch_val_loss": avg_val_loss, "epoch_train_loss": avg_train_loss}
         for cb in callbacks:
-            cb.on_train_end()
+            cb.on_epoch_end(epoch, epoch_logs)
+        # check for early stopping
+        if any(getattr(cb, "stop_training", False) for cb in callbacks):
+            break
+    for cb in callbacks:
+        cb.on_train_end()
 
     print("Training complete.")
 
