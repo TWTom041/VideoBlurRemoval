@@ -1,0 +1,47 @@
+from main2 import split_dataset, PairedVideoDataset
+import torch
+from torch.utils.data import Dataset, DataLoader
+from diffusers.configuration_utils import FrozenDict
+from ltx_video.models.autoencoders.causal_video_autoencoder import CausalVideoAutoencoder
+from ltx_video.models.autoencoders.vae_encode import vae_encode
+from ltx_video.models.transformers.transformer3d import Transformer3DModel
+from ltx_video.models.transformers.symmetric_patchifier import SymmetricPatchifier
+from ltx_video.schedulers.rf import RectifiedFlowScheduler
+from ltx_video.pipelines.pipeline_ltx_video import retrieve_timesteps
+
+torch.serialization.add_safe_globals([FrozenDict])
+
+def main():
+    # Video processing hyperparameters.
+    target_height = 864   # original video height
+    target_width = 1536   # original video width
+    num_frames = 41      # or set to a lower number to sample a subset
+    num_timesteps = 1000
+
+    latent_height = target_height // 8
+    latent_width = target_width // 8
+    latent_frames = (num_frames + 7) // 8
+    latent_channels = 128
+
+    # Paths to the folders with input and target videos.
+    input_vids_dir = "/home/twtomtwcc00/VideoBlurRemoval/VSPW_latent/blurred/"
+    target_vids_dir = "/home/twtomtwcc00/VideoBlurRemoval/VSPW_latent/origin/"
+    
+    train_split, test_split = split_dataset(input_vids_dir, target_vids_dir)
+    test_dataset = PairedVideoDataset(*test_split)
+    test_dataloader = DataLoader(test_dataset, batch_size=1, shuffle=True)
+
+    transformer = Transformer3DModel(
+            in_channels=latent_channels,
+            positional_embedding_theta=10000,
+            positional_embedding_max_pos=[latent_height, latent_width, num_frames // 8],  # adjust if needed
+        )
+    transformer.load_state_dict(torch.load("checkpoints/best_model.pt")["transformers"])
+    scheduler = RectifiedFlowScheduler.from_pretrained("models/ltxv-2b-0.9.6-dev-04-25.safetensors")
+    
+    transformer.eval()
+    input_latents, target_latents = next(test_dataloader)
+
+    timesteps = retrieve_timesteps(num_timesteps)
+    
+    

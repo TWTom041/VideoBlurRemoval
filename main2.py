@@ -326,7 +326,7 @@ def main():
                     return_dict=False,
                 )[0]
 
-                loss = mse_loss(predicted_noise, v_target)
+                loss = mse_loss(predicted_noise, noise_target_patches)
 
                 optimizer.zero_grad()
                 scaler.scale(loss).backward()
@@ -381,7 +381,7 @@ def main():
                     return_dict=False,
                 )[0]
 
-                val_losses.append(mse_loss(predicted_noise, v_target).item())
+                val_losses.append(mse_loss(predicted_noise, noise_target_patches).item())
                 if step % 10 == 0:
                     print(f"Epoch [{epoch+1}/{num_epochs}] Step [{step}/{len(test_dataloader)}] Loss: {loss.item():.4f}")
 
