@@ -273,6 +273,8 @@ def main():
         EarlyStopping(patience=20, min_delta=1e-4),
         ModelCheckpoint(
             model=transformer,
+            optimizer=optimizer,
+            scaler=scaler,
             save_dir="checkpoints",
             best_fname="best_model.pt",
             last_fname="last_model.pt",
