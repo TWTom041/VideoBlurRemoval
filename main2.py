@@ -177,7 +177,7 @@ class ModelCheckpoint(Callback):
         self._save_checkpoint(self.last_path, None)
         if self.verbose:
             print(f"Training ended. Final checkpoint saved → {self.last_path}")
-
+    
     def _save_checkpoint(self, path, epoch):
         data = {
             "model": self.model.state_dict(),
@@ -244,8 +244,8 @@ def main():
             positional_embedding_theta=10000,
             positional_embedding_max_pos=[latent_height, latent_width, num_frames // 8],  # adjust if needed
         )
-    if Path("checkpoints/vbrt_best.pt").exists():
-        transformer.load_state_dict(state_dict=torch.load("checkpoints/vbrt_best.pt", weights_only=True))
+    if Path("checkpoints/best_model.safetensors").exists():
+        transformer.load_state_dict(state_dict=torch.load("checkpoints/best_model.safetensors", weights_only=True))
     transformer.to(device)
 
     patchifier = SymmetricPatchifier(patch_size=1)
@@ -253,6 +253,9 @@ def main():
     scheduler = RectifiedFlowScheduler.from_pretrained(ckpt_path)
 
     optimizer = optim.Adam(transformer.parameters(), lr=learning_rate)
+       #     if Path("checkpoints/last_adam.safetensors").exists():
+        #        optimizer.load_state_dict(state_dict=torch.load("checkpoints/last_adam.safetensors"))
+   
     mse_loss = nn.MSELoss()
 
     callbacks = [
@@ -261,8 +264,8 @@ def main():
         ModelCheckpoint(
             model=transformer,
             save_dir="checkpoints",
-            best_fname="vbrt_best.pt",
-            last_fname="vbrt_last.pt",
+            best_fname="best_model.safetensors",
+            last_fname="last_model.safetensors",
             monitor="epoch_val_loss",
             mode="min",
             verbose=True,
