@@ -8,6 +8,9 @@ from ltx_video.models.transformers.transformer3d import Transformer3DModel
 from ltx_video.models.transformers.symmetric_patchifier import SymmetricPatchifier
 from ltx_video.schedulers.rf import RectifiedFlowScheduler
 from ltx_video.pipelines.pipeline_ltx_video import retrieve_timesteps
+from ltx_video.models.autoencoders.vae_encode import vae_decode
+from ltx_video.models.transformers.symmetric_patchifier import SymmetricPatchifier
+from torchvision.io import write_video
 
 torch.serialization.add_safe_globals([FrozenDict])
 
@@ -42,13 +45,32 @@ def main():
     transformer.eval()
     for input_latents, target_latents in test_dataloader:
         break
-
+    patchifier = SymmetricPatchifier(patch_size=1)
     timesteps = retrieve_timesteps(scheduler)
     print(timesteps)
     scale=0.1
+    input_patches, indices_grid = patchifier.patchify(input_latents)
     for i in range(0, 1, 0.1):
-        noise=transformer(input_latents)
-        input_latents=input_latents-noise*scale
         
+        predicted_noise = transformer(
+                    hidden_states=input_patches,
+                    indices_grid=indices_grid,
+                    timestep=i,
+                    attention_mask=None,
+                    encoder_attention_mask=None,
+                    skip_layer_mask=None,
+                    skip_layer_strategy=None,
+                    return_dict=False,
+                )[0]
+        input_patches=input_patches-predicted_noise*scale
+    input_latents=patchifier.unpatchify(input_patches)
+    vae = CausalVideoAutoencoder.from_pretrained("checkpoints/best_model.pt")
+    vae.to("cuda", dtype=torch.bfloat16)
+    out_images=vae_decode(input_latents, vae, vae_per_channel_normalize=False, timestep=0)
+    out_images = (out_images + 1.0) * 127.5
+    out_images = torch.clamp(out_images, 0, 255)
+    write_video("decode_test_out.mp4", out_images, fps=24, video_codec="h264")
+
+    
 if __name__=="__main__":
     main()
