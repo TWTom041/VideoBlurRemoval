@@ -36,12 +36,19 @@ def main():
             positional_embedding_theta=10000,
             positional_embedding_max_pos=[latent_height, latent_width, num_frames // 8],  # adjust if needed
         )
-    transformer.load_state_dict(torch.load("checkpoints/best_model.pt")["transformers"])
+    transformer.load_state_dict(torch.load("checkpoints/best_model.pt")["transformer"])
     scheduler = RectifiedFlowScheduler.from_pretrained("models/ltxv-2b-0.9.6-dev-04-25.safetensors")
     
     transformer.eval()
-    input_latents, target_latents = next(test_dataloader)
+    for input_latents, target_latents in test_dataloader:
+        break
 
-    timesteps = retrieve_timesteps(num_timesteps)
-    
-    
+    timesteps = retrieve_timesteps(scheduler)
+    print(timesteps)
+    scale=0.1
+    for i in range(0, 1, 0.1):
+        noise=transformer(input_latents)
+        input_latents=input_latents-noise*scale
+        
+if __name__=="__main__":
+    main()
