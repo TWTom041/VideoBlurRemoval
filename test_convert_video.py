@@ -49,7 +49,7 @@ def main():
     
     scale=0.1
     input_patches, indices_grid = patchifier.patchify(input_latents)
-    for i in range(0, 1, 0.1):
+    for i in range(0., 1., 0.1):
         
         predicted_noise = transformer(
                     hidden_states=input_patches,
