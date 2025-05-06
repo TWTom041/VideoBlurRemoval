@@ -67,7 +67,7 @@ def main():
                 return_dict=False,
             )[0]
             input_patches=input_patches-predicted_noise/num_inference_steps
-        input_latents=patchifier.unpatchify(input_patches, output_height=target_height, output_width=target_width, out_channels=3)
+        input_latents=patchifier.unpatchify(input_patches, output_height=latent_height, output_width=latent_width, out_channels=latent_channels)
         vae = CausalVideoAutoencoder.from_pretrained("checkpoints/best_model.pt")
         vae.to("cuda", dtype=torch.bfloat16)
         out_images=vae_decode(input_latents, vae, vae_per_channel_normalize=False, timestep=0)
