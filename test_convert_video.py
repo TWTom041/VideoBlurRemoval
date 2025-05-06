@@ -54,7 +54,7 @@ def main():
             predicted_noise = transformer(
                         hidden_states=input_patches,
                         indices_grid=indices_grid,
-                        timestep=torch.tensor(i/10),
+                        timestep=torch.tensor(i/10, dtype=torch.bfloat16),
                         attention_mask=None,
                         encoder_attention_mask=None,
                         skip_layer_mask=None,
