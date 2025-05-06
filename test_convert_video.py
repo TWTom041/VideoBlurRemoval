@@ -43,10 +43,11 @@ def main():
     scheduler = RectifiedFlowScheduler.from_pretrained("models/ltxv-2b-0.9.6-dev-04-25.safetensors")
     
     transformer.eval()
-    for input_latents, target_latents in test_dataloader:
-        break
-    patchifier = SymmetricPatchifier(patch_size=1)
+    
     with torch.autocast("cuda", torch.bfloat16), torch.no_grad():
+        for input_latents, target_latents in test_dataloader:
+            break
+        patchifier = SymmetricPatchifier(patch_size=1)
         scale=0.1
         input_patches, indices_grid = patchifier.patchify(input_latents)
         for i in range(10):
