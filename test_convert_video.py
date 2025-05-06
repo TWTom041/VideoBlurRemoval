@@ -15,11 +15,12 @@ from torchvision.io import write_video
 torch.serialization.add_safe_globals([FrozenDict])
 
 def main():
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # Video processing hyperparameters.
     target_height = 864   # original video height
     target_width = 1536   # original video width
     num_frames = 41      # or set to a lower number to sample a subset
-    num_timesteps = 1000
+    num_inference_steps = 10
 
     latent_height = target_height // 8
     latent_width = target_width // 8
@@ -45,24 +46,26 @@ def main():
     transformer.eval()
     
     with torch.autocast("cuda", torch.bfloat16), torch.no_grad():
+        transformer = transformer.to(device)
+        input_latents = input_latents.to(device)   # (B, latent_channels, F_latent, H_latent, W_latent)
+        target_latents = target_latents.to(device)
         for input_latents, target_latents in test_dataloader:
             break
         patchifier = SymmetricPatchifier(patch_size=1)
-        scale=0.1
         input_patches, indices_grid = patchifier.patchify(input_latents)
-        for i in range(10):
-            
+        for i in range(num_inference_steps):
+            timestep = torch.tensor(i / num_inference_steps, dtype=torch.bfloat16, device=device)
             predicted_noise = transformer(
-                        hidden_states=input_patches,
-                        indices_grid=indices_grid,
-                        timestep=torch.tensor(i/10, dtype=torch.bfloat16),
-                        attention_mask=None,
-                        encoder_attention_mask=None,
-                        skip_layer_mask=None,
-                        skip_layer_strategy=None,
-                        return_dict=False,
-                    )[0]
-            input_patches=input_patches-predicted_noise*scale
+                hidden_states=input_patches,
+                indices_grid=indices_grid,
+                timestep=timestep,
+                attention_mask=None,
+                encoder_attention_mask=None,
+                skip_layer_mask=None,
+                skip_layer_strategy=None,
+                return_dict=False,
+            )[0]
+            input_patches=input_patches-predicted_noise/num_inference_steps
         input_latents=patchifier.unpatchify(input_patches)
         vae = CausalVideoAutoencoder.from_pretrained("checkpoints/best_model.pt")
         vae.to("cuda", dtype=torch.bfloat16)
