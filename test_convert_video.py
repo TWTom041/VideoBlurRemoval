@@ -46,28 +46,28 @@ def main():
     for input_latents, target_latents in test_dataloader:
         break
     patchifier = SymmetricPatchifier(patch_size=1)
-    
-    scale=0.1
-    input_patches, indices_grid = patchifier.patchify(input_latents)
-    for i in range(10):
-        
-        predicted_noise = transformer(
-                    hidden_states=input_patches,
-                    indices_grid=indices_grid,
-                    timestep=i/10,
-                    attention_mask=None,
-                    encoder_attention_mask=None,
-                    skip_layer_mask=None,
-                    skip_layer_strategy=None,
-                    return_dict=False,
-                )[0]
-        input_patches=input_patches-predicted_noise*scale
-    input_latents=patchifier.unpatchify(input_patches)
-    vae = CausalVideoAutoencoder.from_pretrained("checkpoints/best_model.pt")
-    vae.to("cuda", dtype=torch.bfloat16)
-    out_images=vae_decode(input_latents, vae, vae_per_channel_normalize=False, timestep=0)
-    out_images = (out_images + 1.0) * 127.5
-    out_images = torch.clamp(out_images, 0, 255)
+    with torch.autocast("cuda", torch.bfloat16), torch.no_grad():
+        scale=0.1
+        input_patches, indices_grid = patchifier.patchify(input_latents)
+        for i in range(10):
+            
+            predicted_noise = transformer(
+                        hidden_states=input_patches,
+                        indices_grid=indices_grid,
+                        timestep=i/10,
+                        attention_mask=None,
+                        encoder_attention_mask=None,
+                        skip_layer_mask=None,
+                        skip_layer_strategy=None,
+                        return_dict=False,
+                    )[0]
+            input_patches=input_patches-predicted_noise*scale
+        input_latents=patchifier.unpatchify(input_patches)
+        vae = CausalVideoAutoencoder.from_pretrained("checkpoints/best_model.pt")
+        vae.to("cuda", dtype=torch.bfloat16)
+        out_images=vae_decode(input_latents, vae, vae_per_channel_normalize=False, timestep=0)
+        out_images = (out_images + 1.0) * 127.5
+        out_images = torch.clamp(out_images, 0, 255)
     write_video("decode_test_out.mp4", out_images, fps=24, video_codec="h264")
 
     
