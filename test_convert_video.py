@@ -46,8 +46,7 @@ def main():
     for input_latents, target_latents in test_dataloader:
         break
     patchifier = SymmetricPatchifier(patch_size=1)
-    timesteps = retrieve_timesteps(scheduler)
-    print(timesteps)
+    
     scale=0.1
     input_patches, indices_grid = patchifier.patchify(input_latents)
     for i in range(0, 1, 0.1):
