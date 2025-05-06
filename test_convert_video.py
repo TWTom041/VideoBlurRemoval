@@ -47,10 +47,11 @@ def main():
     
     with torch.autocast("cuda", torch.bfloat16), torch.no_grad():
         transformer = transformer.to(device)
-        input_latents = input_latents.to(device)   # (B, latent_channels, F_latent, H_latent, W_latent)
-        target_latents = target_latents.to(device)
         for input_latents, target_latents in test_dataloader:
             break
+        input_latents = input_latents.to(device)   # (B, latent_channels, F_latent, H_latent, W_latent)
+        target_latents = target_latents.to(device)
+        
         patchifier = SymmetricPatchifier(patch_size=1)
         input_patches, indices_grid = patchifier.patchify(input_latents)
         for i in range(num_inference_steps):
