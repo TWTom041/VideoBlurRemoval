@@ -313,7 +313,7 @@ def main():
                 
                 # Forward pass: predict noise conditioned on the input video.
                 predicted = transformer(
-                    hidden_states=input_patches,
+                    hidden_states=noisy_input_patches,
                     indices_grid=indices_grid,
                     timestep=t,
                     attention_mask=None,
@@ -366,7 +366,7 @@ def main():
                 
                 # Forward pass: predict noise conditioned on the input video.
                 predicted = transformer(
-                    hidden_states=input_patches,
+                    hidden_states=noisy_input_patches,
                     indices_grid=indices_grid,
                     timestep=t,
                     attention_mask=None,
