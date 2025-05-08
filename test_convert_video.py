@@ -75,7 +75,7 @@ def main():
                 skip_layer_strategy=None,
                 return_dict=False,
             )[0]
-            input_patches=input_patches-predicted_noise/num_inference_steps
+            input_patches=scheduler.add_noise(input_patches, -predicted_noise, i)
         input_latents=patchifier.unpatchify(
             input_patches, 
             output_height=latent_height, 
@@ -86,7 +86,7 @@ def main():
         out_images = (out_images + 1.0) * 127.5
         out_images = torch.clamp(out_images, 0, 255)
         out_images = out_images.permute(0, 2, 3, 4, 1).squeeze(0)
-    print(test_split)
+    print(test_split[0])
     write_video("deblur_test_out.mp4", out_images, fps=24, video_codec="h264")
 
     
