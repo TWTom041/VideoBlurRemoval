@@ -63,7 +63,7 @@ def main():
         
         patchifier = SymmetricPatchifier(patch_size=1)
         input_patches, indices_grid = patchifier.patchify(input_latents)
-        for i in range(num_inference_steps-1, -1, -1):
+        for i in range(0, num_inference_steps):
             timestep = torch.tensor(i / num_inference_steps, dtype=torch.bfloat16, device=device)
             predicted_noise = transformer(
                 hidden_states=input_patches,
