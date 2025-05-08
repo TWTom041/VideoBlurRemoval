@@ -87,8 +87,8 @@ def main():
             out_channels=transformer.in_channels)
         
         out_images=vae_decode(input_latents, vae, vae_per_channel_normalize=False, timestep=0)
-        out_images = out_images - 20.
-        out_images = (out_images + 1.0) * 127.5
+        out_images = out_images
+        out_images = (out_images + 1.0) * 127.5 - 20.
         out_images = torch.clamp(out_images, 0, 255)
         out_images = out_images.permute(0, 2, 3, 4, 1).squeeze(0)
     print(test_split[0][0])
