@@ -63,7 +63,7 @@ def main():
         
         patchifier = SymmetricPatchifier(patch_size=1)
         input_patches, indices_grid = patchifier.patchify(input_latents)
-        for i in range(0, num_inference_steps):
+        for i in reversed(range(0, num_inference_steps)):
             timestep = torch.tensor(i / num_inference_steps, dtype=torch.bfloat16, device=device)
             predicted_noise = transformer(
                 hidden_states=input_patches,
@@ -86,7 +86,7 @@ def main():
         out_images = (out_images + 1.0) * 127.5
         out_images = torch.clamp(out_images, 0, 255)
         out_images = out_images.permute(0, 2, 3, 4, 1).squeeze(0)
-    print(test_split[0])
+    print(test_split[0][0])
     write_video("deblur_test_out.mp4", out_images, fps=24, video_codec="h264")
 
     
