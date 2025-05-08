@@ -32,7 +32,7 @@ def main():
     test_dataset = PairedVideoDataset(*test_split)
     test_dataloader = DataLoader(test_dataset, batch_size=1, shuffle=True)
 
-    vae = CausalVideoAutoencoder.from_pretrained("checkpoints/best_model.pt")
+    vae = CausalVideoAutoencoder.from_pretrained("models/ltxv-2b-0.9.6-dev-04-25.safetensors")
     vae.to("cuda", dtype=torch.bfloat16)
     scheduler = RectifiedFlowScheduler.from_pretrained("models/ltxv-2b-0.9.6-dev-04-25.safetensors")
     
