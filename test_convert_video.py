@@ -75,7 +75,7 @@ def main():
                 skip_layer_strategy=None,
                 return_dict=False,
             )[0]
-            input_patches=scheduler.add_noise(input_patches, -predicted_noise, i)
+            input_patches=scheduler.add_noise(input_patches, -predicted_noise, timestep)
         input_latents=patchifier.unpatchify(
             input_patches, 
             output_height=latent_height, 
