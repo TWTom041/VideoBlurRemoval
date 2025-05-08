@@ -30,7 +30,7 @@ def main():
     
     train_split, test_split = split_dataset(input_vids_dir, target_vids_dir)
     test_dataset = PairedVideoDataset(*test_split)
-    test_dataloader = DataLoader(test_dataset, batch_size=1, shuffle=True)
+    test_dataloader = DataLoader(test_dataset, batch_size=1, shuffle=False)
 
     vae = CausalVideoAutoencoder.from_pretrained("models/ltxv-2b-0.9.6-dev-04-25.safetensors")
     vae.to("cuda", dtype=torch.bfloat16)
@@ -86,7 +86,8 @@ def main():
         out_images = (out_images + 1.0) * 127.5
         out_images = torch.clamp(out_images, 0, 255)
         out_images = out_images.permute(0, 2, 3, 4, 1).squeeze(0)
-    write_video("decode_test_out.mp4", out_images, fps=24, video_codec="h264")
+    print(test_split)
+    write_video("deblur_test_out.mp4", out_images, fps=24, video_codec="h264")
 
     
 if __name__=="__main__":
