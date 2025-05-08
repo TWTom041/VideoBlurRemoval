@@ -63,7 +63,7 @@ def main():
         
         patchifier = SymmetricPatchifier(patch_size=1)
         input_patches, indices_grid = patchifier.patchify(input_latents)
-        for i in reversed(range(0, num_inference_steps)):
+        for i in range(0, num_inference_steps):
             timestep = torch.tensor(i / num_inference_steps, dtype=torch.bfloat16, device=device)
             predicted_noise = transformer(
                 hidden_states=input_patches,
@@ -77,7 +77,7 @@ def main():
             )[0]
             
             #input_patches=scheduler.add_noise(input_patches-predicted_noise, input_patches-predicted_noise, timestep)
-            input_patches=(input_patches-predicted_noise*timestep)#*1/(1-timestep)
+            input_patches=(input_patches-predicted_noise*timestep)*1/(1-timestep)
             #input_patches=input_patches*timestep+predicted_noise*(1-timestep)
         input_latents=patchifier.unpatchify(
             input_patches, 
