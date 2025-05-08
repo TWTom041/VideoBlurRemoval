@@ -300,10 +300,8 @@ def main():
                 input_latents = input_latents.to(device)   # (B, latent_channels, F_latent, H_latent, W_latent)
                 target_latents = target_latents.to(device)
 
-                noise = target_latents - input_latents
-
                 # Patchify the noisy target and the noise (prediction target).
-                noise_target_patches, _ = patchifier.patchify(noise)
+                target_patches, _ = patchifier.patchify(target_latents)
                 # Patchify the input latents to use as conditioning.
                 input_patches, indices_grid = patchifier.patchify(input_latents)
 
@@ -311,11 +309,10 @@ def main():
                 t = torch.randint(0, num_timesteps, (input_latents.shape[0], 1), device=device, dtype=torch.bfloat16)
                 t = t / num_timesteps
 
-                noisy_input_patches = scheduler.add_noise(input_patches, noise_target_patches, t)
-                v_target = noisy_input_patches - input_patches
+                noisy_input_patches = scheduler.add_noise(target_patches, input_patches, t)
                 
                 # Forward pass: predict noise conditioned on the input video.
-                predicted_noise = transformer(
+                predicted = transformer(
                     hidden_states=input_patches,
                     indices_grid=indices_grid,
                     timestep=t,
@@ -326,7 +323,7 @@ def main():
                     return_dict=False,
                 )[0]
 
-                loss = mse_loss(predicted_noise, noise_target_patches)
+                loss = mse_loss(predicted, target_patches)
 
                 optimizer.zero_grad()
                 scaler.scale(loss).backward()
@@ -355,10 +352,8 @@ def main():
                 input_latents = input_latents.to(device)   # (B, latent_channels, F_latent, H_latent, W_latent)
                 target_latents = target_latents.to(device)
 
-                noise = target_latents - input_latents
-
                 # Patchify the noisy target and the noise (prediction target).
-                noise_target_patches, _ = patchifier.patchify(noise)
+                target_patches, _ = patchifier.patchify(target_latents)
                 # Patchify the input latents to use as conditioning.
                 input_patches, indices_grid = patchifier.patchify(input_latents)
 
@@ -366,11 +361,11 @@ def main():
                 t = torch.randint(0, num_timesteps, (input_latents.shape[0], 1), device=device, dtype=torch.bfloat16)
                 t = t / num_timesteps
 
-                noisy_input_patches = scheduler.add_noise(input_patches, noise_target_patches, t)
+                noisy_input_patches = scheduler.add_noise(target_patches, input_patches, t)
                 v_target = noisy_input_patches - input_patches
                 
                 # Forward pass: predict noise conditioned on the input video.
-                predicted_noise = transformer(
+                predicted = transformer(
                     hidden_states=input_patches,
                     indices_grid=indices_grid,
                     timestep=t,
@@ -381,7 +376,7 @@ def main():
                     return_dict=False,
                 )[0]
 
-                val_losses.append(mse_loss(predicted_noise, noise_target_patches).item())
+                val_losses.append(mse_loss(predicted, target_patches).item())
                 if step % 10 == 0:
                     print(f"Epoch [{epoch+1}/{num_epochs}] Step [{step}/{len(test_dataloader)}] Loss: {loss.item():.4f}")
 
