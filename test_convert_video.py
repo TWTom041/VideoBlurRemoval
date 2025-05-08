@@ -77,7 +77,8 @@ def main():
             )[0]
             
             #input_patches=scheduler.add_noise(input_patches-predicted_noise, input_patches-predicted_noise, timestep)
-            input_patches=(input_patches-predicted_noise*timestep)*1/(1-timestep)
+            #input_patches=(input_patches-predicted_noise*timestep)*1/(1-timestep)
+            input_patches=input_patches*timestep+predicted_noise*(1-timestep)
         input_latents=patchifier.unpatchify(
             input_patches, 
             output_height=latent_height, 
