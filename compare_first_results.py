@@ -1,12 +1,11 @@
 import torch
 from torcheval.metrics import PeakSignalNoiseRatio
-from torchmetrics.image import StructuralSimilarityIndexMeasure
+from torchmetrics.functional.image import structural_similarity_index_measure
 import torchvision.transforms as transforms
 import os
 import cv2
 
 metric = PeakSignalNoiseRatio()
-ssim = StructuralSimilarityIndexMeasure()
 vid="98_zPGqEMMWyx4"
 ori_path=f"/home/twtomtwcc00/VSPW/data/{vid}/origin"
 res_path="./deblur_test_out.mp4"
@@ -47,4 +46,4 @@ print(res_vid.shape, ori_vid.shape)
 assert res_vid.shape==ori_vid.shape, "load video failed\n"
 metric.update(res_vid, ori_vid)
 print("PSNR:"+str(metric.compute()))
-print(ssim(res_vid, ori_vid))
+print(structural_similarity_index_measure(res_vid, ori_vid))
