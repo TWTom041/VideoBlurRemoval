@@ -46,4 +46,8 @@ print(res_vid.shape, ori_vid.shape)
 assert res_vid.shape==ori_vid.shape, "load video failed\n"
 metric.update(res_vid, ori_vid)
 print("PSNR:"+str(metric.compute()))
-print(structural_similarity_index_measure(res_vid, ori_vid))
+ssim_scores = []
+for i in range(res_vid.shape[0]):
+    score = structural_similarity_index_measure(res_vid[i].unsqueeze(0), ori_vid[i].unsqueeze(0))  # Add batch dim
+    ssim_scores.append(score.item())
+print("SSIM:", sum(ssim_scores) / len(ssim_scores))
