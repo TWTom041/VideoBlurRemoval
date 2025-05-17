@@ -5,8 +5,8 @@ import os
 import cv2
 
 metric = PeakSignalNoiseRatio()
-
-ori_path="/home/twtomtwcc00/VSPW/data/98_zPGqEMMWyx4/origin"
+vid="98_zPGqEMMWyx4"
+ori_path=f"/home/twtomtwcc00/VSPW/data/{vid}/origin"
 res_path="./deblur_test_out.mp4"
 
 
@@ -29,6 +29,11 @@ for i in sorted(os.listdir(ori_path)):
     if i.startswith("._"):
         continue
     frames.append(transforms.ToTensor()(cv2.cvtColor(cv2.imread(os.path.join(ori_path, i)), cv2.COLOR_BGR2RGB)).unsqueeze(0))
+OUT_DIR = "/home/twtomtwcc00/VideoBlurRemoval/VSPW_latent"
+with open(os.path.join(OUT_DIR, f"{vid}.STARTFRAME")) as f:
+    start_frame = int(f.read())
+    frames=frames[start_frame:start_frame+41]
+
 ori_vid=torch.cat(frames, dim=0)
 print(res_vid.shape, ori_vid.shape)
 assert res_vid.shape==ori_vid.shape, "load video failed\n"
