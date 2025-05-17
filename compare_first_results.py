@@ -30,7 +30,8 @@ for i in sorted(os.listdir(ori_path)):
         continue
     print(os.path.join(ori_path, i))
     frames.append(transforms.ToTensor()(cv2.cvtColor(cv2.imread(os.path.join(ori_path, i)), cv2.COLOR_BGR2RGB)).unsqueeze(0))
-ori_vid=torch.cat(frames, dim=0)  
+ori_vid=torch.cat(frames, dim=0)
+print(res_vid.shape, ori_vid.shape)
 assert res_vid.shape==ori_vid.shape, "load video failed\n"
 metric.update(res_vid, ori_vid)
 print(metric.compute())
