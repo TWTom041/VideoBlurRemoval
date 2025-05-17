@@ -34,7 +34,7 @@ for i in sorted(os.listdir(ori_path)):
     if i.startswith("._"):
         continue
     frame=cv2.imread(os.path.join(ori_path, i))
-    frame=cv2.resize(frame, (864, 1536))
+    frame=cv2.resize(frame, (1536, 864))
     frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     frame = transforms.ToTensor()(frame).unsqueeze(0)  # (1, 3, H, W)
     frames.append(frame)
