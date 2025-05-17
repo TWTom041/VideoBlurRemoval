@@ -46,4 +46,4 @@ ori_vid=torch.cat(frames, dim=0)
 print(res_vid.shape, ori_vid.shape)
 assert res_vid.shape==ori_vid.shape, "load video failed\n"
 metric.update(res_vid, ori_vid)
-print(f"PSNR:{metric.compute()}, SSIM:{ssim(res_vid, ori_vid)}")
+print("PSNR:"+str(metric.compute())+" SSIM:"+str(ssim(res_vid, ori_vid)))
