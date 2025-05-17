@@ -26,6 +26,8 @@ res_vid=torch.cat(frames, dim=0)
 
 frames=[]
 for i in sorted(os.listdir(ori_path)):
+    if i.startswith("._"):
+        continue
     print(os.path.join(ori_path, i))
     frames.append(transforms.ToTensor()(cv2.cvtColor(cv2.imread(os.path.join(ori_path, i)), cv2.COLOR_BGR2RGB)).unsqueeze(0))
 ori_vid=torch.cat(frames, dim=0)  
