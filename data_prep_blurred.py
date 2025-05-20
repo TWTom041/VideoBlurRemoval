@@ -16,7 +16,7 @@ ckpt_path = "/home/twtomtwcc00/VideoBlurRemoval/models/ltxv-2b-0.9.6-dev-04-25.s
 vae = CausalVideoAutoencoder.from_pretrained(ckpt_path)
 vae.to(device, dtype=torch.bfloat16)
 resizer = T.Resize([864, 1536])
-blur_transform = T.GaussianBlur(kernel_size=9, sigma=1.7)
+blur_transform = T.GaussianBlur(kernel_size=9, sigma=4)
 
 DATADIR = "/home/twtomtwcc00/VSPW/data/"
 OUT_DIR = "/home/twtomtwcc00/VideoBlurRemoval/VSPW_latent"
@@ -84,7 +84,7 @@ for vid in os.listdir(DATADIR):
             noise = torch.randint(0, 255, origin_img.shape, device=device, dtype=torch.float32)
             blurred = noise * (7/16) + origin_img * (9/16)
         elif option == 2:
-            blurred = F.interpolate(origin_img.unsqueeze(0), size=(H // 3, W // 3), mode='bilinear', align_corners=False)
+            blurred = F.interpolate(origin_img.unsqueeze(0), size=(H // 6, W // 6), mode='bilinear', align_corners=False)
             blurred = F.interpolate(blurred, size=(H, W), mode='nearest')
         masked_blur = blurred * mask_tensor + origin_img * (1 - mask_tensor)
         if H != 864 or W != 1536:
